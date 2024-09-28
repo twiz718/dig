@@ -1,6 +1,7 @@
 package main
 
 import (
+	"encoding/hex"
 	"flag"
 	"fmt"
 	"net"
@@ -32,6 +33,7 @@ type QueryConfig struct {
 	Mode         Protocol
 	QuestionType string
 	FQDN         string
+	Raw          bool
 }
 
 func main() {
@@ -42,6 +44,7 @@ func main() {
 	questionType := flag.String("t", "A", "question dns.Type, ex: A, AAAA, NS, etc.")
 	fqdn := flag.String("fqdn", "google.com", "fqdn to lookup")
 	noColor := flag.Bool("nc", false, "no color")
+	raw := flag.Bool("raw", false, "show raw response")
 	flag.Parse()
 
 	if *noColor {
@@ -57,7 +60,7 @@ func main() {
 			*port = "853"
 		}
 	}
-	qc := &QueryConfig{Host: *host, Port: *port, Mode: proto, FQDN: *fqdn, QuestionType: *questionType}
+	qc := &QueryConfig{Host: *host, Port: *port, Mode: proto, FQDN: *fqdn, QuestionType: *questionType, Raw: *raw}
 	os.Exit(Run(qc))
 }
 
@@ -131,6 +134,14 @@ func doLookup(qc *QueryConfig, trunc bool) int {
 			}
 		}
 		fmt.Printf("\nBYTES RECEIVED: %v, IN: %v\n", color.GreenString(strconv.Itoa(r.Len())), color.CyanString(timeElapsed.String()))
+
+		if qc.Raw {
+			packedMsg, err := r.Pack()
+			if err != nil {
+				fmt.Println(err)
+			}
+			fmt.Printf("\n%v", hex.Dump(packedMsg))
+		}
 		return 0
 	}
 }
