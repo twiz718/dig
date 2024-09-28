@@ -54,6 +54,8 @@ Usage of dig:
         fqdn to lookup (default "google.com")
   -h string
         DNS server hostname/ip to use (default "8.8.8.8")
+  -nc
+        no color
   -p string
         Port to connect on (default "53")
   -t string
