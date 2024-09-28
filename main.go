@@ -90,10 +90,18 @@ func doLookup(qc *QueryConfig, trunc bool) int {
 		return doLookup(qc, true)
 	} else {
 		timeElapsed := time.Since(timeNow)
-		fmt.Printf("ANSWERS: %v, BYTES RECEIVED: %v, IN: %v\n\n", len(r.Answer), r.Len(), timeElapsed)
-		for _, a := range r.Answer {
-			fmt.Printf("%+v\n", a)
+		fmt.Printf("QUERY: %v; ANSWER: %v; AUTHORITY: %v; ADDITIONAL: %v\n", len(r.Question), len(r.Answer), len(r.Ns), len(r.Extra))
+		fmt.Printf("HDR: %+v\n\n", r.MsgHdr)
+		if len(r.Answer) == 0 && len(r.Ns) > 0 {
+			for _, n := range r.Ns {
+				fmt.Printf("%+v\n", n)
+			}
+		} else if len(r.Answer) > 0 {
+			for _, a := range r.Answer {
+				fmt.Printf("%+v\n", a)
+			}
 		}
+		fmt.Printf("\nBYTES RECEIVED: %v, IN: %v\n", r.Len(), timeElapsed)
 		return 0
 	}
 }
