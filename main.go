@@ -5,8 +5,10 @@ import (
 	"fmt"
 	"net"
 	"os"
+	"strconv"
 	"time"
 
+	"github.com/fatih/color"
 	"github.com/miekg/dns"
 )
 
@@ -39,8 +41,12 @@ func main() {
 	tlsMode := flag.Bool("tls", false, "use TLS (DoT)")
 	questionType := flag.String("t", "A", "question dns.Type, ex: A, AAAA, NS, etc.")
 	fqdn := flag.String("fqdn", "google.com", "fqdn to lookup")
-
+	noColor := flag.Bool("nc", false, "no color")
 	flag.Parse()
+
+	if *noColor {
+		color.NoColor = true // disables colorized output
+	}
 
 	proto := UDP
 	if *tcpMode {
@@ -56,7 +62,12 @@ func main() {
 }
 
 func Run(qc *QueryConfig) int {
-	fmt.Printf("Host: %v, Port: %v, Proto: %v, FQDN: %v, Question Type: %v\n", qc.Host, qc.Port, ProtoString[qc.Mode], qc.FQDN, qc.QuestionType)
+	fmt.Printf("Host: %v, Port: %v, Proto: %v, FQDN: %v, Question Type: %v\n",
+		color.GreenString(qc.Host),
+		color.GreenString(qc.Port),
+		color.GreenString(ProtoString[qc.Mode]),
+		color.CyanString(qc.FQDN),
+		color.YellowString(qc.QuestionType))
 	return doLookup(qc, false)
 }
 
@@ -82,7 +93,16 @@ func doLookup(qc *QueryConfig, trunc bool) int {
 		return 1
 	}
 	if r.Rcode != dns.RcodeSuccess {
-		fmt.Println("Rcode:", dns.RcodeToString[r.Rcode])
+		fmt.Printf("Id: %v, Opcode: %v, AA: %v, TC: %v, RD: %v, RA: %v, Z: %v, RCODE: %v\n",
+			r.MsgHdr.Id,
+			r.MsgHdr.Opcode,
+			r.MsgHdr.Authoritative,
+			r.MsgHdr.Truncated,
+			r.MsgHdr.RecursionDesired,
+			r.MsgHdr.RecursionAvailable,
+			r.MsgHdr.Zero,
+			color.RedString(dns.RcodeToString[r.MsgHdr.Rcode]))
+		// fmt.Println("Rcode:", color.RedString(dns.RcodeToString[r.Rcode]))
 		return 1
 	}
 	if r.Truncated && len(r.Answer) == 0 && qc.Mode == UDP {
@@ -90,8 +110,17 @@ func doLookup(qc *QueryConfig, trunc bool) int {
 		return doLookup(qc, true)
 	} else {
 		timeElapsed := time.Since(timeNow)
-		fmt.Printf("QUERY: %v; ANSWER: %v; AUTHORITY: %v; ADDITIONAL: %v\n", len(r.Question), len(r.Answer), len(r.Ns), len(r.Extra))
-		fmt.Printf("HDR: %+v\n\n", r.MsgHdr)
+		fmt.Printf("Id: %v, Opcode: %v, AA: %v, TC: %v, RD: %v, RA: %v, Z: %v, RCODE: %v\n",
+			r.MsgHdr.Id,
+			r.MsgHdr.Opcode,
+			r.MsgHdr.Authoritative,
+			r.MsgHdr.Truncated,
+			r.MsgHdr.RecursionDesired,
+			r.MsgHdr.RecursionAvailable,
+			r.MsgHdr.Zero,
+			color.GreenString(dns.RcodeToString[r.MsgHdr.Rcode]))
+		fmt.Printf("QUERY: %v; ANSWER: %v; AUTHORITY: %v; ADDITIONAL: %v\n\n", len(r.Question), len(r.Answer), len(r.Ns), len(r.Extra))
+
 		if len(r.Answer) == 0 && len(r.Ns) > 0 {
 			for _, n := range r.Ns {
 				fmt.Printf("%+v\n", n)
@@ -101,7 +130,7 @@ func doLookup(qc *QueryConfig, trunc bool) int {
 				fmt.Printf("%+v\n", a)
 			}
 		}
-		fmt.Printf("\nBYTES RECEIVED: %v, IN: %v\n", r.Len(), timeElapsed)
+		fmt.Printf("\nBYTES RECEIVED: %v, IN: %v\n", color.GreenString(strconv.Itoa(r.Len())), color.CyanString(timeElapsed.String()))
 		return 0
 	}
 }
