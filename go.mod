@@ -4,6 +4,7 @@ go 1.23.1
 
 require (
 	github.com/fatih/color v1.17.0
+	github.com/leaanthony/clir v1.7.0
 	github.com/miekg/dns v1.1.62
 )
 

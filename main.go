@@ -2,7 +2,7 @@ package main
 
 import (
 	"encoding/hex"
-	"flag"
+	"errors"
 	"fmt"
 	"net"
 	"os"
@@ -10,6 +10,7 @@ import (
 	"time"
 
 	"github.com/fatih/color"
+	"github.com/leaanthony/clir"
 	"github.com/miekg/dns"
 )
 
@@ -37,31 +38,63 @@ type QueryConfig struct {
 }
 
 func main() {
-	host := flag.String("h", "8.8.8.8", "DNS server hostname/ip to use")
-	port := flag.String("p", "53", "Port to connect on")
-	tcpMode := flag.Bool("tcp", false, "use TCP")
-	tlsMode := flag.Bool("tls", false, "use TLS (DoT)")
-	questionType := flag.String("t", "A", "question dns.Type, ex: A, AAAA, NS, etc.")
-	fqdn := flag.String("fqdn", "google.com", "fqdn to lookup")
-	noColor := flag.Bool("nc", false, "no color")
-	raw := flag.Bool("raw", false, "show raw response")
-	flag.Parse()
+	cli := clir.NewCli("dig", "A lightweight dig replacement", "v0.0.1")
+	cli.LongDescription("ex: dig @8.8.4.4 google.com -t MX")
+	host := "8.8.8.8"
+	port := "53"
+	questionType := "A"
+	var fqdn string
 
-	if *noColor {
-		color.NoColor = true // disables colorized output
-	}
+	tcpMode := false
+	tlsMode := false
+	noColor := false
+	raw := false
 
-	proto := UDP
-	if *tcpMode {
-		proto = TCP
-	} else if *tlsMode {
-		proto = TLS
-		if *port == "53" {
-			*port = "853"
+	cli.StringFlag("host", "DNS server hostname/ip to use", &host)
+	cli.StringFlag("port", "port to connect on", &port)
+	cli.BoolFlag("tcp", "use TCP", &tcpMode)
+	cli.BoolFlag("tls", "use TLS (DoT)", &tlsMode)
+	cli.StringFlag("t", "question type, ex: A, NS, MX, etc.", &questionType)
+	cli.BoolFlag("nc", "disable ansi colors", &noColor)
+	cli.BoolFlag("raw", "show raw response", &raw)
+	cli.Action(func() error {
+		for _, arg := range cli.OtherArgs() {
+			if arg[0] == '@' && host == "8.8.8.8" {
+				host = arg[1:]
+				continue
+			}
+			if fqdn == "" {
+				fqdn = arg
+			}
 		}
+		if noColor {
+			color.NoColor = true // disables colorized output
+		}
+
+		proto := UDP
+		if tcpMode {
+			proto = TCP
+		} else if tlsMode {
+			proto = TLS
+			if port == "53" {
+				port = "853"
+			}
+		}
+
+		if fqdn == "" {
+			return errors.New("No fqdn provided")
+		}
+		qc := &QueryConfig{Host: host, Port: port, Mode: proto, FQDN: fqdn, QuestionType: questionType, Raw: raw}
+		Run(qc)
+		return nil
+	})
+
+	if err := cli.Run(); err != nil {
+		fmt.Println(err)
+		cli.PrintHelp()
+		os.Exit(1)
 	}
-	qc := &QueryConfig{Host: *host, Port: *port, Mode: proto, FQDN: *fqdn, QuestionType: *questionType, Raw: *raw}
-	os.Exit(Run(qc))
+	os.Exit(0)
 }
 
 func Run(qc *QueryConfig) int {
