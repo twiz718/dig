@@ -12,7 +12,7 @@ go build
 
 Example querying for `ANY` record type:
 ```
-dig.exe -fqdn slackb.com -t ANY
+dig.exe slackb.com -t ANY
 Host: 8.8.8.8, Port: 53, Proto: udp, FQDN: slackb.com, Question Type: ANY
 WARNING: truncated response, will retry with tcp instead
 Id: 15302, Opcode: 0, AA: false, TC: false, RD: true, RA: true, Z: false, RCODE: NOERROR
@@ -52,7 +52,7 @@ BYTES RECEIVED: 1873, IN: 27.5409ms
 
 Example with `-raw` (hex dump) output included:
 ```
-dig.exe -fqdn slackb.com -t https  -raw
+dig.exe slackb.com -t https -raw
 Host: 8.8.8.8, Port: 53, Proto: udp, FQDN: slackb.com, Question Type: https
 Id: 258, Opcode: 0, AA: false, TC: false, RD: true, RA: true, Z: false, RCODE: NOERROR
 QUERY: 1; ANSWER: 0; AUTHORITY: 1; ADDITIONAL: 0
@@ -73,22 +73,27 @@ BYTES RECEIVED: 125, IN: 11.6849ms
 
 ### Help
 
-`dig.exe`:
+`dig.exe --help`:
 
 ```
-Usage of dig:
-  -fqdn string
-        fqdn to lookup (default "google.com")
-  -h string
+dig v0.0.1 - A lightweight dig replacement
+
+ex: dig @8.8.4.4 google.com -t MX
+
+Flags:
+
+  -help
+        Get help on the 'dig' command.
+  -host string
         DNS server hostname/ip to use (default "8.8.8.8")
   -nc
-        no color
-  -p string
-        Port to connect on (default "53")
+        disable ansi colors
+  -port string
+        port to connect on (default "53")
   -raw
         show raw response
   -t string
-        question dns.Type, ex: A, AAAA, NS, etc. (default "A")
+        question type, ex: A, NS, MX, etc. (default "A")
   -tcp
         use TCP
   -tls
