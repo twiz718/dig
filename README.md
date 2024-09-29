@@ -73,6 +73,8 @@ BYTES RECEIVED: 125, IN: 11.6849ms
 
 ### Help
 
+`dig.exe`:
+
 ```
 Usage of dig:
   -fqdn string
@@ -92,4 +94,36 @@ Usage of dig:
   -tls
         use TLS (DoT)
 
+```
+
+`pp.exe` (Packet Print)
+
+Example of a file called `bad3.txt` containing a mixed text & hex output from BIND's dig tool complaining it cannot parse a DNS response:
+
+`type bad3.txt`:
+```
+;; Got bad packet: extra input data
+58 bytes
+0a 64 81 80 00 01 00 01 00 00 00 00 06 73 6c 61          .d...........sla
+63 6b 62 03 63 6f 6d 00 00 41 00 01 c0 0c 00 41          ckb.com..A.....A
+00 01 00 00 00 1e 00 12 00 00 00 00 01 00 03 02          ................
+68 32 00 04 00 04 2d fd 83 e2                            h2....-...
+```
+
+We can pass it to `pp.exe` directly and it will attempt to extract the relevant parts to parse it as a DNS response:
+```
+pp bad3.txt
+Rcode:  NOERROR
+HEADER:
+{Id:2660 Response:true Opcode:0 Authoritative:false Truncated:false RecursionDesired:true RecursionAvailable:true Zero:false AuthenticatedData:false CheckingDisabled:false Rcode:0}
+
+QUESTION: 1
+Name [slackb.com.] Class [1] Type [HTTPS]
+
+ANSWER: 1
+slackb.com.     30      IN      HTTPS   0 . alpn="h2" ipv4hint="45.253.131.226"
+
+AUTHORITATIVE: 0
+
+EXTRA: 0
 ```
