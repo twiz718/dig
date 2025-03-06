@@ -1,6 +1,7 @@
 package main
 
 import (
+	"encoding/base64"
 	"encoding/hex"
 	"errors"
 	"fmt"
@@ -34,16 +35,19 @@ var ProtoString = map[Protocol]string{
 }
 
 type QueryConfig struct {
-	Host         string
-	Port         string
-	Mode         Protocol
-	QuestionType string
-	FQDN         string
-	Raw          bool
+	Host               string
+	Port               string
+	Mode               Protocol
+	QuestionType       string
+	FQDN               string
+	Raw                bool
+	PrintRequestBase64 bool
+	BinRequestToFile   string
+	BinResponseToFile  string
 }
 
 func main() {
-	cli := clir.NewCli("dig", "A lightweight dig replacement", "v0.0.1")
+	cli := clir.NewCli("dig", "A lightweight dig replacement", "v0.0.2")
 	cli.LongDescription("ex: dig @8.8.4.4 google.com -t MX")
 	host := "8.8.8.8"
 	port := "53"
@@ -56,6 +60,10 @@ func main() {
 	dohPostMode := false
 	noColor := false
 	raw := false
+	printRequestBase64 := false
+
+	binRequestToFile := ""
+	binResponseToFile := ""
 
 	cli.StringFlag("host", "DNS server hostname/ip to use", &host)
 	cli.StringFlag("port", "port to connect on", &port)
@@ -66,6 +74,10 @@ func main() {
 	cli.StringFlag("t", "question type, ex: A, NS, MX, etc.", &questionType)
 	cli.BoolFlag("nc", "disable ansi colors", &noColor)
 	cli.BoolFlag("raw", "show raw response", &raw)
+	cli.BoolFlag("print-request-base64", "print request base64", &printRequestBase64)
+	cli.StringFlag("bin-request-to-file", "print request binary to file", &binRequestToFile)
+	cli.StringFlag("bin-response-to-file", "print response binary to file", &binResponseToFile)
+
 	cli.Action(func() error {
 		for _, arg := range cli.OtherArgs() {
 			if arg[0] == '@' && host == "8.8.8.8" {
@@ -99,7 +111,17 @@ func main() {
 		if fqdn == "" {
 			return errors.New("No fqdn provided")
 		}
-		qc := &QueryConfig{Host: host, Port: port, Mode: proto, FQDN: fqdn, QuestionType: questionType, Raw: raw}
+		qc := &QueryConfig{
+			Host:               host,
+			Port:               port,
+			Mode:               proto,
+			FQDN:               fqdn,
+			QuestionType:       questionType,
+			Raw:                raw,
+			PrintRequestBase64: printRequestBase64,
+			BinRequestToFile:   binRequestToFile,
+			BinResponseToFile:  binResponseToFile,
+		}
 		Run(qc)
 		return nil
 	})
@@ -113,12 +135,6 @@ func main() {
 }
 
 func Run(qc *QueryConfig) int {
-	fmt.Printf("Host: %v, Port: %v, Proto: %v, FQDN: %v, Question Type: %v\n",
-		color.GreenString(qc.Host),
-		color.GreenString(qc.Port),
-		color.GreenString(ProtoString[qc.Mode]),
-		color.CyanString(qc.FQDN),
-		color.YellowString(qc.QuestionType))
 	return doLookup(qc, false)
 }
 
@@ -136,6 +152,39 @@ func doLookup(qc *QueryConfig, trunc bool) int {
 	m.Compress = true
 	m.SetQuestion(qc.FQDN+".", questionStringToType[qc.QuestionType])
 	m.RecursionDesired = true
+
+	// Do we only want to show the base64 of the request? (useful for manual DoH wireformat requests)
+	if qc.PrintRequestBase64 {
+		packedMsg, err := m.Pack()
+		if err != nil {
+			fmt.Println(err)
+			return 1
+		}
+		fmt.Printf("Request Base64 encoded: %v\n", color.GreenString(base64.StdEncoding.EncodeToString(packedMsg)))
+		return 0
+	}
+
+	// Do we want to save the request in binary format to a file?
+	if qc.BinRequestToFile != "" {
+		packedMsg, err := m.Pack()
+		if err != nil {
+			fmt.Println(err)
+			return 1
+		}
+		err = os.WriteFile(qc.BinRequestToFile, packedMsg, 0644)
+		if err != nil {
+			fmt.Println(err)
+			return 1
+		}
+		fmt.Printf("Wrote request binary to file: %v\n", color.GreenString(qc.BinRequestToFile))
+	}
+
+	fmt.Printf("Host: %v, Port: %v, Proto: %v, FQDN: %v, Question Type: %v\n",
+		color.GreenString(qc.Host),
+		color.GreenString(qc.Port),
+		color.GreenString(ProtoString[qc.Mode]),
+		color.CyanString(qc.FQDN),
+		color.YellowString(qc.QuestionType))
 
 	var r *dns.Msg
 	var err error
@@ -222,6 +271,21 @@ func doLookup(qc *QueryConfig, trunc bool) int {
 				fmt.Println(err)
 			}
 			fmt.Printf("\n%v", hex.Dump(packedMsg))
+		}
+
+		// Do we want to save the response in binary format to a file?
+		if qc.BinResponseToFile != "" {
+			packedMsg, err := r.Pack()
+			if err != nil {
+				fmt.Println(err)
+				return 1
+			}
+			err = os.WriteFile(qc.BinResponseToFile, packedMsg, 0644)
+			if err != nil {
+				fmt.Println(err)
+				return 1
+			}
+			fmt.Printf("Wrote response binary to file: %v\n", color.GreenString(qc.BinResponseToFile))
 		}
 		return 0
 	}

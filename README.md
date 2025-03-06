@@ -6,6 +6,7 @@
 
 ```
 go build
+go build -o pp cmd/print_packet.go
 ```
 
 ### Running
@@ -76,12 +77,16 @@ BYTES RECEIVED: 125, IN: 11.6849ms
 `dig.exe --help`:
 
 ```
-dig v0.0.1 - A lightweight dig replacement
+dig v0.0.2 - A lightweight dig replacement
 
 ex: dig @8.8.4.4 google.com -t MX
 
 Flags:
 
+  -bin-request-to-file string
+    	print request binary to file
+  -bin-response-to-file string
+    	print response binary to file
   -doh
     	use DoH (GET) json format
   -doh-post
@@ -94,6 +99,8 @@ Flags:
     	disable ansi colors
   -port string
     	port to connect on (default "53")
+  -print-request-base64
+    	print request base64
   -raw
     	show raw response
   -t string
