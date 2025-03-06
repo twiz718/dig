@@ -82,22 +82,26 @@ ex: dig @8.8.4.4 google.com -t MX
 
 Flags:
 
+  -doh
+    	use DoH (GET) json format
+  -doh-post
+    	use DoH via HTTP POST wire format
   -help
-        Get help on the 'dig' command.
+    	Get help on the 'dig' command.
   -host string
-        DNS server hostname/ip to use (default "8.8.8.8")
+    	DNS server hostname/ip to use (default "8.8.8.8")
   -nc
-        disable ansi colors
+    	disable ansi colors
   -port string
-        port to connect on (default "53")
+    	port to connect on (default "53")
   -raw
-        show raw response
+    	show raw response
   -t string
-        question type, ex: A, NS, MX, etc. (default "A")
+    	question type, ex: A, NS, MX, etc. (default "A")
   -tcp
-        use TCP
+    	use TCP
   -tls
-        use TLS (DoT)
+    	use TLS (DoT)
 
 ```
 
