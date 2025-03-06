@@ -72,6 +72,62 @@ BYTES RECEIVED: 125, IN: 11.6849ms
 00000070  20 00 00 03 84 00 12 75  00 00 01 51 80           | ......u...Q.|
 ```
 
+Example of saving request & response in binary format to file(s) and using DoH POST wireformat for the DNS resolution:
+```
+./dig -doh-post @1.1.1.1 www.cnn.com -t A -bin-request-to-file cnn_req.bin -bin-response-to-file cnn_resp.bin
+Wrote request binary to file: cnn_req.bin
+Host: 1.1.1.1, Port: 443, Proto: doh-post, FQDN: www.cnn.com, Question Type: A
+Id: 50278, Opcode: 0, AA: false, TC: false, RD: true, RA: true, Z: false, RCODE: NOERROR
+QUERY: 1; ANSWER: 5; AUTHORITY: 0; ADDITIONAL: 0
+
+www.cnn.com.	288	IN	CNAME	cnn-tls.map.fastly.net.
+cnn-tls.map.fastly.net.	48	IN	A	151.101.3.5
+cnn-tls.map.fastly.net.	48	IN	A	151.101.67.5
+cnn-tls.map.fastly.net.	48	IN	A	151.101.195.5
+cnn-tls.map.fastly.net.	48	IN	A	151.101.131.5
+
+BYTES RECEIVED: 228, IN: 55.294083ms
+Wrote response binary to file: cnn_resp.bin
+
+$ ls -al *bin
+-rw-r--r--   1 akhanin  staff       29 Mar  6 15:59 cnn_req.bin
+-rw-r--r--   1 akhanin  staff      228 Mar  6 15:59 cnn_resp.bin
+
+$ ./pp cnn_req.bin 
+Rcode:  NOERROR
+HEADER:
+{Id:50278 Response:false Opcode:0 Authoritative:false Truncated:false RecursionDesired:true RecursionAvailable:false Zero:false AuthenticatedData:false CheckingDisabled:false Rcode:0}
+
+QUESTION: 1
+Name [www.cnn.com.] Class [1] Type [A]
+
+ANSWER: 0
+
+AUTHORITATIVE: 0
+
+EXTRA: 0
+
+$ ./pp cnn_resp.bin 
+Rcode:  NOERROR
+HEADER:
+{Id:50278 Response:true Opcode:0 Authoritative:false Truncated:false RecursionDesired:true RecursionAvailable:true Zero:false AuthenticatedData:false CheckingDisabled:false Rcode:0}
+
+QUESTION: 1
+Name [www.cnn.com.] Class [1] Type [A]
+
+ANSWER: 5
+www.cnn.com.	288	IN	CNAME	cnn-tls.map.fastly.net.
+cnn-tls.map.fastly.net.	48	IN	A	151.101.3.5
+cnn-tls.map.fastly.net.	48	IN	A	151.101.67.5
+cnn-tls.map.fastly.net.	48	IN	A	151.101.195.5
+cnn-tls.map.fastly.net.	48	IN	A	151.101.131.5
+
+AUTHORITATIVE: 0
+
+EXTRA: 0
+
+```
+
 ### Help
 
 `dig.exe --help`:
