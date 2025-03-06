@@ -6,6 +6,7 @@ require (
 	github.com/fatih/color v1.17.0
 	github.com/leaanthony/clir v1.7.0
 	github.com/miekg/dns v1.1.62
+	github.com/shynome/doh-client v1.2.0
 )
 
 require (

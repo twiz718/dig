@@ -12,6 +12,7 @@ import (
 	"github.com/fatih/color"
 	"github.com/leaanthony/clir"
 	"github.com/miekg/dns"
+	"github.com/shynome/doh-client"
 )
 
 type Protocol int
@@ -20,12 +21,16 @@ const (
 	UDP Protocol = iota
 	TCP
 	TLS
+	DOHPOST // DoH POST
+	DOHGET  // DoH GET
 )
 
 var ProtoString = map[Protocol]string{
-	UDP: "udp",
-	TCP: "tcp",
-	TLS: "tcp-tls",
+	UDP:     "udp",
+	TCP:     "tcp",
+	TLS:     "tcp-tls",
+	DOHPOST: "doh-post",
+	DOHGET:  "doh", // doh = DoH GET
 }
 
 type QueryConfig struct {
@@ -47,6 +52,8 @@ func main() {
 
 	tcpMode := false
 	tlsMode := false
+	dohGetMode := false
+	dohPostMode := false
 	noColor := false
 	raw := false
 
@@ -54,6 +61,8 @@ func main() {
 	cli.StringFlag("port", "port to connect on", &port)
 	cli.BoolFlag("tcp", "use TCP", &tcpMode)
 	cli.BoolFlag("tls", "use TLS (DoT)", &tlsMode)
+	cli.BoolFlag("doh", "use DoH (GET) json format", &dohGetMode)
+	cli.BoolFlag("doh-post", "use DoH via HTTP POST wire format", &dohPostMode)
 	cli.StringFlag("t", "question type, ex: A, NS, MX, etc.", &questionType)
 	cli.BoolFlag("nc", "disable ansi colors", &noColor)
 	cli.BoolFlag("raw", "show raw response", &raw)
@@ -79,6 +88,12 @@ func main() {
 			if port == "53" {
 				port = "853"
 			}
+		} else if dohGetMode {
+			proto = DOHGET
+			port = "443"
+		} else if dohPostMode {
+			proto = DOHPOST
+			port = "443"
 		}
 
 		if fqdn == "" {
@@ -114,18 +129,51 @@ func doLookup(qc *QueryConfig, trunc bool) int {
 		questionStringToType[q] = t
 	}
 
-	c := new(dns.Client)
 	if trunc && qc.Mode == UDP {
 		qc.Mode = TCP
 	}
-	c.Net = ProtoString[qc.Mode]
 	m := new(dns.Msg)
 	m.Compress = true
 	m.SetQuestion(qc.FQDN+".", questionStringToType[qc.QuestionType])
 	m.RecursionDesired = true
-	r, _, err := c.Exchange(m, net.JoinHostPort(qc.Host, qc.Port))
-	if err != nil {
-		fmt.Println(err)
+
+	var r *dns.Msg
+	var err error
+	// for non DOH queries
+	if qc.Mode != DOHGET && qc.Mode != DOHPOST {
+		c := new(dns.Client)
+		c.Net = ProtoString[qc.Mode]
+		r, _, err = c.Exchange(m, net.JoinHostPort(qc.Host, qc.Port))
+		if err != nil {
+			fmt.Println(err)
+			return 1
+		}
+	} else if qc.Mode == DOHGET {
+		co := &dns.Conn{Conn: doh.NewConn(nil, nil, qc.Host)}
+		if err = co.WriteMsg(m); err != nil {
+			fmt.Println(err)
+			return 1
+		}
+		r, err = co.ReadMsg()
+		if err != nil {
+			fmt.Println(err)
+			return 1
+		}
+	} else if qc.Mode == DOHPOST {
+		dohConn := doh.NewConn(nil, nil, qc.Host)
+		dohConn.HttpGet = false
+		co := &dns.Conn{Conn: dohConn}
+		if err = co.WriteMsg(m); err != nil {
+			fmt.Println(err)
+			return 1
+		}
+		r, err = co.ReadMsg()
+		if err != nil {
+			fmt.Println(err)
+			return 1
+		}
+	} else {
+		fmt.Println("Unknown dns request mode, exiting.")
 		return 1
 	}
 	if r.Rcode != dns.RcodeSuccess {
