@@ -8,6 +8,7 @@ import (
 	"net"
 	"os"
 	"strconv"
+	"strings"
 	"time"
 
 	"github.com/fatih/color"
@@ -44,11 +45,12 @@ type QueryConfig struct {
 	PrintRequestBase64 bool
 	BinRequestToFile   string
 	BinResponseToFile  string
+	DnsSec             bool
 }
 
 func main() {
 	cli := clir.NewCli("dig", "A lightweight dig replacement", "v0.0.2")
-	cli.LongDescription("ex: dig @8.8.4.4 google.com -t MX")
+	cli.LongDescription("ex: dig @8.8.4.4 google.com -t MX +dnssec")
 	host := "8.8.8.8"
 	port := "53"
 	questionType := "A"
@@ -61,6 +63,7 @@ func main() {
 	noColor := false
 	raw := false
 	printRequestBase64 := false
+	dnssec := false
 
 	binRequestToFile := ""
 	binResponseToFile := ""
@@ -82,6 +85,10 @@ func main() {
 		for _, arg := range cli.OtherArgs() {
 			if arg[0] == '@' && host == "8.8.8.8" {
 				host = arg[1:]
+				continue
+			}
+			if strings.EqualFold(arg, "+dnssec") {
+				dnssec = true
 				continue
 			}
 			if fqdn == "" {
@@ -116,11 +123,12 @@ func main() {
 			Port:               port,
 			Mode:               proto,
 			FQDN:               fqdn,
-			QuestionType:       questionType,
+			QuestionType:       strings.ToUpper(questionType),
 			Raw:                raw,
 			PrintRequestBase64: printRequestBase64,
 			BinRequestToFile:   binRequestToFile,
 			BinResponseToFile:  binResponseToFile,
+			DnsSec:             dnssec,
 		}
 		Run(qc)
 		return nil
@@ -150,8 +158,23 @@ func doLookup(qc *QueryConfig, trunc bool) int {
 	}
 	m := new(dns.Msg)
 	m.Compress = true
-	m.SetQuestion(qc.FQDN+".", questionStringToType[qc.QuestionType])
+	fqdn := qc.FQDN
+	if qc.FQDN != "." {
+		fqdn = fqdn + "."
+	}
+	m.SetQuestion(fqdn, questionStringToType[qc.QuestionType])
 	m.RecursionDesired = true
+	if qc.DnsSec {
+		o := &dns.OPT{
+			Hdr: dns.RR_Header{
+				Name:   fqdn,
+				Rrtype: dns.TypeOPT,
+			},
+		}
+		o.SetDo()
+		o.SetUDPSize(dns.DefaultMsgSize)
+		m.Extra = append(m.Extra, o)
+	}
 
 	// Do we only want to show the base64 of the request? (useful for manual DoH wireformat requests)
 	if qc.PrintRequestBase64 {
@@ -179,11 +202,12 @@ func doLookup(qc *QueryConfig, trunc bool) int {
 		fmt.Printf("Wrote request binary to file: %v\n", color.GreenString(qc.BinRequestToFile))
 	}
 
-	fmt.Printf("Host: %v, Port: %v, Proto: %v, FQDN: %v, Question Type: %v\n",
+	fmt.Printf("Host: %v, Port: %v, Proto: %v, DNSSEC: %v, FQDN: %v, Question Type: %v\n",
 		color.GreenString(qc.Host),
 		color.GreenString(qc.Port),
 		color.GreenString(ProtoString[qc.Mode]),
-		color.CyanString(qc.FQDN),
+		color.GreenString(strconv.FormatBool(qc.DnsSec)),
+		color.CyanString(fqdn),
 		color.YellowString(qc.QuestionType))
 
 	var r *dns.Msg
