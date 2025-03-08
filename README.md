@@ -128,43 +128,157 @@ EXTRA: 0
 
 ```
 
+Using `dnssec` and saving the response to `json`:
+
+```
+$ ./dig www.verisign.com -t A +dnssec -json-response-to-file v.json
+Host: 8.8.8.8, Port: 53, Proto: udp, DNSSEC: true, FQDN: www.verisign.com., Question Type: A
+Id: 12816, Opcode: 0, AA: false, TC: false, RD: true, RA: true, Z: false, RCODE: NOERROR
+QUERY: 1; ANSWER: 4; AUTHORITY: 0; ADDITIONAL: 1
+
+www.verisign.com.       552     IN      CNAME   www.gslb.verisign.com.
+www.verisign.com.       552     IN      RRSIG   CNAME 8 3 600 20250406231950 20250307231950 48940 verisign.com. Jsd5mhvQv1jPd0ppKGbB4bBBomqiuDU7TRteW4c+tnV02oI8bD4SIps+OYqsU0OavqDz0TzK3QLRlSpCp71ZBgigEpTBfdga/FUthOHrxWq9vTlwzoKHzrcpti7U4z82d2JJ6BJegK64WZDg68qVjz7hFk9ddtX9mHTkecwKqaU=
+www.gslb.verisign.com.  12      IN      A       209.131.162.75
+www.gslb.verisign.com.  12      IN      RRSIG   A 8 4 30 20250311180653 20250304170653 25746 gslb.verisign.com. hmxndf1ykuOhG6bg3hmaxLz6NxicC8QAyULe3td2BMaOBJO8scOrfE08SGCFSYNoWoCaANdVeGkjlrFTEx7NdNR5a5oJlmS6gr5m6IGf6HBLZL6hI7p+BL+jlYMPECcl4K8oOUlWEb8FoogWfN4oDfHT/RN2hhHerJn4qU5NSZiJY9VGc46S+YElx+91/25/NWBxXL/OcOQyYSgfF9BoGIGofa7FMyqSXgqDRGWjHNUf9PcG+JTJCgZ02aBh6eB2FTH8t65DoMpGu05ybUYoyMgmN9zFrXx6OWA0E85Kh7+Sb07IxoDyWATaOAva3b348zpC6jmPQV4HCPvCqHCLFg==
+
+BYTES RECEIVED: 650, IN: 9.7809ms
+Wrote response json to file: v.json
+
+
+$ cat v.json
+{
+    "Id": 12816,
+    "Response": true,
+    "Opcode": 0,
+    "Authoritative": false,
+    "Truncated": false,
+    "RecursionDesired": true,
+    "RecursionAvailable": true,
+    "Zero": false,
+    "AuthenticatedData": true,
+    "CheckingDisabled": false,
+    "Rcode": 0,
+    "Question": [
+        {
+            "Name": "www.verisign.com.",
+            "Qtype": 1,
+            "Qclass": 1
+        }
+    ],
+    "Answer": [
+        {
+            "Hdr": {
+                "Name": "www.verisign.com.",
+                "Rrtype": 5,
+                "Class": 1,
+                "Ttl": 552,
+                "Rdlength": 11
+            },
+            "Target": "www.gslb.verisign.com."
+        },
+        {
+            "Hdr": {
+                "Name": "www.verisign.com.",
+                "Rrtype": 46,
+                "Class": 1,
+                "Ttl": 552,
+                "Rdlength": 160
+            },
+            "TypeCovered": 5,
+            "Algorithm": 8,
+            "Labels": 3,
+            "OrigTtl": 600,
+            "Expiration": 1743981590,
+            "Inception": 1741389590,
+            "KeyTag": 48940,
+            "SignerName": "verisign.com.",
+            "Signature": "Jsd5mhvQv1jPd0ppKGbB4bBBomqiuDU7TRteW4c+tnV02oI8bD4SIps+OYqsU0OavqDz0TzK3QLRlSpCp71ZBgigEpTBfdga/FUthOHrxWq9vTlwzoKHzrcpti7U4z82d2JJ6BJegK64WZDg68qVjz7hFk9ddtX9mHTkecwKqaU="
+        },
+        {
+            "Hdr": {
+                "Name": "www.gslb.verisign.com.",
+                "Rrtype": 1,
+                "Class": 1,
+                "Ttl": 12,
+                "Rdlength": 4
+            },
+            "A": "209.131.162.75"
+        },
+        {
+            "Hdr": {
+                "Name": "www.gslb.verisign.com.",
+                "Rrtype": 46,
+                "Class": 1,
+                "Ttl": 12,
+                "Rdlength": 293
+            },
+            "TypeCovered": 1,
+            "Algorithm": 8,
+            "Labels": 4,
+            "OrigTtl": 30,
+            "Expiration": 1741716413,
+            "Inception": 1741108013,
+            "KeyTag": 25746,
+            "SignerName": "gslb.verisign.com.",
+            "Signature": "hmxndf1ykuOhG6bg3hmaxLz6NxicC8QAyULe3td2BMaOBJO8scOrfE08SGCFSYNoWoCaANdVeGkjlrFTEx7NdNR5a5oJlmS6gr5m6IGf6HBLZL6hI7p+BL+jlYMPECcl4K8oOUlWEb8FoogWfN4oDfHT/RN2hhHerJn4qU5NSZiJY9VGc46S+YElx+91/25/NWBxXL/OcOQyYSgfF9BoGIGofa7FMyqSXgqDRGWjHNUf9PcG+JTJCgZ02aBh6eB2FTH8t65DoMpGu05ybUYoyMgmN9zFrXx6OWA0E85Kh7+Sb07IxoDyWATaOAva3b348zpC6jmPQV4HCPvCqHCLFg=="
+        }
+    ],
+    "Ns": null,
+    "Extra": [
+        {
+            "Hdr": {
+                "Name": ".",
+                "Rrtype": 41,
+                "Class": 512,
+                "Ttl": 32768,
+                "Rdlength": 0
+            },
+            "Option": null
+        }
+    ]
+}
+```
+
 ### Help
 
 `dig.exe --help`:
 
 ```
+$ ./dig -help
 dig v0.0.2 - A lightweight dig replacement
 
-ex: dig @8.8.4.4 google.com -t MX
+ex: dig @8.8.4.4 google.com -t MX +dnssec
 
 Flags:
 
   -bin-request-to-file string
-    	print request binary to file
+        print request binary to file
   -bin-response-to-file string
-    	print response binary to file
+        print response binary to file
   -doh
-    	use DoH (GET) json format
+        use DoH (GET) json format
   -doh-post
-    	use DoH via HTTP POST wire format
+        use DoH via HTTP POST wire format
   -help
-    	Get help on the 'dig' command.
+        Get help on the 'dig' command.
   -host string
-    	DNS server hostname/ip to use (default "8.8.8.8")
+        DNS server hostname/ip to use (default "8.8.8.8")
+  -json-response-to-file string
+        print response json to file
   -nc
-    	disable ansi colors
+        disable ansi colors
   -port string
-    	port to connect on (default "53")
+        port to connect on (default "53")
   -print-request-base64
-    	print request base64
+        print request base64
   -raw
-    	show raw response
+        show raw response
   -t string
-    	question type, ex: A, NS, MX, etc. (default "A")
+        question type, ex: A, NS, MX, etc. (default "A")
   -tcp
-    	use TCP
+        use TCP
   -tls
-    	use TLS (DoT)
+        use TLS (DoT)
 
 ```
 

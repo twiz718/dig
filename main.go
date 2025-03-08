@@ -3,6 +3,7 @@ package main
 import (
 	"encoding/base64"
 	"encoding/hex"
+	"encoding/json"
 	"errors"
 	"fmt"
 	"net"
@@ -46,6 +47,7 @@ type QueryConfig struct {
 	BinRequestToFile   string
 	BinResponseToFile  string
 	DnsSec             bool
+	JsonResponseToFile string
 }
 
 func main() {
@@ -67,6 +69,7 @@ func main() {
 
 	binRequestToFile := ""
 	binResponseToFile := ""
+	jsonResponseToFile := ""
 
 	cli.StringFlag("host", "DNS server hostname/ip to use", &host)
 	cli.StringFlag("port", "port to connect on", &port)
@@ -80,6 +83,7 @@ func main() {
 	cli.BoolFlag("print-request-base64", "print request base64", &printRequestBase64)
 	cli.StringFlag("bin-request-to-file", "print request binary to file", &binRequestToFile)
 	cli.StringFlag("bin-response-to-file", "print response binary to file", &binResponseToFile)
+	cli.StringFlag("json-response-to-file", "print response json to file", &jsonResponseToFile)
 
 	cli.Action(func() error {
 		for _, arg := range cli.OtherArgs() {
@@ -129,6 +133,7 @@ func main() {
 			BinRequestToFile:   binRequestToFile,
 			BinResponseToFile:  binResponseToFile,
 			DnsSec:             dnssec,
+			JsonResponseToFile: jsonResponseToFile,
 		}
 		Run(qc)
 		return nil
@@ -159,7 +164,7 @@ func doLookup(qc *QueryConfig, trunc bool) int {
 	m := new(dns.Msg)
 	m.Compress = true
 	fqdn := qc.FQDN
-	if qc.FQDN != "." {
+	if string(qc.FQDN[len(qc.FQDN)-1]) != "." {
 		fqdn = fqdn + "."
 	}
 	m.SetQuestion(fqdn, questionStringToType[qc.QuestionType])
@@ -284,6 +289,13 @@ func doLookup(qc *QueryConfig, trunc bool) int {
 			}
 		} else if len(r.Answer) > 0 {
 			for _, a := range r.Answer {
+				// TODO: Verify RRSIGs?
+				// if a.Header().Rrtype == dns.TypeRRSIG {
+				// 	s := a.(*dns.RRSIG)
+				// 	fmt.Printf("algorithm: %+v\n", s.Algorithm)
+				// 	err := s.Verify(&dns.DNSKEY{}, r.Answer)
+				// 	fmt.Println(err)
+				// }
 				fmt.Printf("%+v\n", a)
 			}
 		}
@@ -310,6 +322,20 @@ func doLookup(qc *QueryConfig, trunc bool) int {
 				return 1
 			}
 			fmt.Printf("Wrote response binary to file: %v\n", color.GreenString(qc.BinResponseToFile))
+		}
+		// Do we want to save the response in json format to a file?
+		if qc.JsonResponseToFile != "" {
+			jStr, err := json.MarshalIndent(r, "", "    ")
+			if err != nil {
+				fmt.Println(err)
+				return 1
+			}
+			err = os.WriteFile(qc.JsonResponseToFile, jStr, 0644)
+			if err != nil {
+				fmt.Println(err)
+				return 1
+			}
+			fmt.Printf("Wrote response json to file: %v\n", color.GreenString(qc.JsonResponseToFile))
 		}
 		return 0
 	}
