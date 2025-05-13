@@ -9,6 +9,12 @@ go build
 go build -o pp cmd/print_packet.go
 ```
 
+### Building for Windows
+```
+GOOS=windows GOARCH=386 go build -o dig.exe main.go
+GOOS=windows GOARCH=386 go build -o pp.exe cmd/print_packet.go 
+```
+
 ### Running
 
 Example querying for `ANY` record type:
@@ -308,6 +314,42 @@ Name [slackb.com.] Class [1] Type [HTTPS]
 
 ANSWER: 1
 slackb.com.     30      IN      HTTPS   0 . alpn="h2" ipv4hint="45.253.131.226"
+
+AUTHORITATIVE: 0
+
+EXTRA: 0
+```
+
+### Testing with Wire format (for DoH)
+
+Generating a base64 string to use for the Wire Format (POST via DoH). Ex: `google.com` for `A` record:
+```
+./dig -print-request-base64 google.com -t A
+Request Base64 encoded: is8BAAABAAAAAAAABmdvb2dsZQNjb20AAAEAAQ==
+```
+
+Making the DoH Wire Format DNS query and capturing the response, replace with your own resolver hostname instead of `doh.resolver.to.use.com`:
+```
+echo -n 'is8BAAABAAAAAAAABmdvb2dsZQNjb20AAAEAAQ==' | base64 --decode | curl --header 'content-type: application/dns-message' --data-binary @- https://doh.resolver.to.use.com/dns-query --output - > google_a.bin
+```
+
+Inspecting the response:
+```
+./pp google_a.bin 
+Rcode:  NOERROR
+HEADER:
+{Id:35535 Response:true Opcode:0 Authoritative:false Truncated:false RecursionDesired:true RecursionAvailable:true Zero:false AuthenticatedData:false CheckingDisabled:false Rcode:0}
+
+QUESTION: 1
+Name [google.com.] Class [1] Type [A]
+
+ANSWER: 6
+google.com.	267	IN	A	173.194.208.113
+google.com.	267	IN	A	173.194.208.138
+google.com.	267	IN	A	173.194.208.101
+google.com.	267	IN	A	173.194.208.139
+google.com.	267	IN	A	173.194.208.102
+google.com.	267	IN	A	173.194.208.100
 
 AUTHORITATIVE: 0
 
